@@ -155,5 +155,263 @@ X =  ⎡  2  -2 ⎤
 
 Используйте комбинированное преобразование и выполните 20 таких операций с отрисовкой в pygame.  
 
+
+Программа реализована с помощью модулей graphics.py и transform.py. Основной файл - main.py.
+Модуль graphics.py содержит:  
+- class Unit - Класс, представляющий единичную величину в пикселях для оси координат.  
+- class Origin - Класс, представляющий точку начала координат.  
+- class ReferenceFrame - Класс для хранения информации о системе координат, включающей начало координат и единичные величины для осей X и Y.  
+- class Drawer - Класс для рисования объектов на экране с использованием библиотеки Pygame. Отвечает за отображение графики, работу с цветами и координатами.  
+Класс Drawer содержит следующие функции
+```
+class Drawer:
+    """
+    Класс для рисования объектов на экране с использованием библиотеки Pygame.
+    Отвечает за отображение графики, работу с цветами и координатами.
+
+    Атрибуты:
+        res_x (int): Ширина окна.
+        res_y (int): Высота окна.
+        rf (ReferenceFrame): Объект, представляющий систему координат.
+        screen (pygame.Surface): Объект экрана Pygame, на котором происходит рисование.
+        __color (tuple): Цвет, используемый для рисования объектов.
+    """
+
+    def __init__(self, res_x, res_y, rf: ReferenceFrame):
+        """
+        Инициализация объекта Drawer.
+
+        Параметры:
+            res_x (int): Ширина экрана.
+            res_y (int): Высота экрана.
+            rf (ReferenceFrame): Система координат для рисования.
+        """
+        self.res_x = res_x
+        self.res_y = res_y
+        self.rf = rf
+        self.screen = None
+        self.__color = (255, 255, 255)  # Цвет по умолчанию (белый)
+
+    def initialize(self, caption: str):
+        """
+        Инициализация Pygame, создание окна и заполнение экрана фоном.
+
+        Параметры:
+            caption (str): Заголовок окна.
+        """
+        pygame.init()
+        self.screen = pygame.display.set_mode((self.res_x, self.res_y))
+        pygame.display.set_caption(caption)
+        self.screen.fill((255, 255, 255))
+
+    @property
+    def color(self):
+        """
+        Геттер для текущего цвета.
+
+        Возвращает:
+            tuple: Цвет в формате (r, g, b).
+        """
+        return self.__color
+
+    @color.setter
+    def color(self, color: tuple):
+        """
+        Сеттер для изменения цвета.
+
+        Параметры:
+            color (tuple): Новый цвет в формате (r, g, b).
+        """
+        self.__color = color
+
+    def get_x(self, x: float):
+        """
+        Преобразование координаты X из системы координат в пиксели экрана.
+
+        Параметры:
+            x (float): Координата по оси X в системе координат.
+
+        Возвращает:
+            int: Пиксельная координата X на экране.
+        """
+        return int(self.rf.origin.x0 + x * self.rf.unit_x.pixels)
+
+    def get_y(self, y: float):
+        """
+        Преобразование координаты Y из системы координат в пиксели экрана.
+        Начало координат (0, 0) будет находиться в левом нижнем углу экрана.
+
+        Параметры:
+            y (float): Координата по оси Y в системе координат.
+
+        Возвращает:
+            int: Пиксельная координата Y на экране.
+        """
+        return int(self.res_y - (self.rf.origin.y0 + y * self.rf.unit_y.pixels))
+
+    def draw_text(self, x: float, y: float, text: str):
+        """
+        Рисование текста на экране в заданной точке.
+
+        Параметры:
+            x (float): Координата X для текста.
+            y (float): Координата Y для текста.
+            text (str): Текст для отображения.
+        """
+        font = pygame.font.Font(None, 24)  # Шрифт
+        text_surface = font.render(text, True, self.color)  # Создание текстового изображения
+        self.screen.blit(text_surface, (self.get_x(x), self.get_y(y)))  # Отображение текста на экране
+
+    def draw_line(self, x1: float, y1: float, x2: float, y2: float, width: int = 1):
+        """
+        Рисование линии на экране от одной точки до другой.
+
+        Параметры:
+            x1 (float): Начальная координата X.
+            y1 (float): Начальная координата Y.
+            x2 (float): Конечная координата X.
+            y2 (float): Конечная координата Y.
+            width (int): Ширина линии (по умолчанию 1).
+        """
+        pygame.draw.line(
+            self.screen,
+            self.color,
+            (self.get_x(x1), self.get_y(y1)),
+            (self.get_x(x2), self.get_y(y2)),
+            width
+        )
+
+    def draw_polygon(self, points: np.ndarray, width: int = 1):
+        """
+        Рисование многоугольника по заданным вершинам.
+
+        Параметры:
+            points (np.ndarray): Массив точек многоугольника в системе координат.
+            width (int): Ширина линий многоугольника (по умолчанию 1).
+        """
+        pygame.draw.polygon(
+            self.screen,
+            self.color,
+            [(self.get_x(pt[0]), self.get_y(pt[1])) for pt in points],
+            width
+        )
+
+    def draw_axes(self, x_min, x_max, y_min, y_max):
+        """
+        Рисование осей координат на экране.
+        Ось X рисуется на уровне y = 0, а ось Y — на уровне x = 0.
+
+        Параметры:
+            x_min (float): Минимальное значение для оси X.
+            x_max (float): Максимальное значение для оси X.
+            y_min (float): Минимальное значение для оси Y.
+            y_max (float): Максимальное значение для оси Y.
+        """
+        self.draw_line(x_min, 0, x_max, 0, 2)  # Рисование X-оси
+        self.draw_line(0, y_min, 0, y_max, 2)  # Рисование Y-оси
+
+```
+Модуль transform.py содержит следующие функции
+```
+def translate(dx: float, dy: float):
+    return np.array([
+        [1, 0, 0],
+        [0, 1, 0],
+        [dx, dy, 1]
+    ])
+
+def scale(sx: float, sy: float):
+    return np.array([
+        [sx, 0, 0],
+        [0, sy, 0],
+        [0, 0, 1]
+    ])
+
+def rotate(angle: float):
+    cs = m.cos(angle)
+    sn = m.sin(angle)
+    return np.array([
+        [cs, sn, 0],
+        [-sn, cs, 0],
+        [0, 0, 1]
+    ])
+
+```
+
+Основной файл для запуска выглядит следующим образом
+```
+import pygame
+import numpy as np
+import sys
+from graphics import Unit, Origin, ReferenceFrame, Drawer
+from transform import translate, scale, rotate
+
+# Константы
+RES_X, RES_Y = 800, 600
+SCALE = 0.9  # Коэффициент масштабирования
+ANGLE = np.pi / 32  # Угол поворота (π/32)
+ITERATIONS = 20  # Количество итераций трансформаций
+
+# Начальные координаты квадрата
+square = np.array([
+    [2, -2, 1],
+    [-2, -2, 1],
+    [-2, 2, 1],
+    [2, 2, 1]
+])
+
+# Единичный размер и начало координат
+unit = Unit(100)  # Каждая единица равна 100 пикселям
+origin = Origin(RES_X / 2, RES_Y / 2)
+rf = ReferenceFrame(origin, unit, unit)
+
+# Drawer для рисования
+drawer = Drawer(RES_X, RES_Y, rf)
+drawer.initialize("Square Transformation")
+
+# Основной цикл программы
+running = True
+while running:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+
+    # Очистка экрана
+    drawer.screen.fill((0, 0, 0))
+
+    # Нарисовать оси
+    # drawer.color = (255, 255, 255)
+    # drawer.draw_axes(-5, 5, -5, 5)
+
+    # Рисовать все итерации
+    current_square = square.copy()
+    for i in range(ITERATIONS + 1):
+        # Преобразование: масштабирование и поворот относительно центра
+        transform = (
+            translate(-origin.x0 / unit.pixels, -origin.y0 / unit.pixels) @  # Сдвиг к центру
+            scale(SCALE, SCALE) @  # Масштабирование
+            rotate(ANGLE) @  # Поворот
+            translate(origin.x0 / unit.pixels, origin.y0 / unit.pixels)  # Возврат к центру
+        )
+
+        # Цвет квадрата зависит от итерации
+        drawer.color = (255 - i * 10, 0, i * 12)
+
+        # Нарисовать квадрат
+        drawer.draw_polygon(current_square)
+
+        # Применить трансформацию для следующей итерации
+        current_square = current_square @ transform.T
+
+    # Обновление экрана
+    pygame.display.flip()
+    pygame.time.Clock().tick(30)
+
+# Завершение Pygame
+pygame.quit()
+sys.exit()
+
+```
+Вывод программы  
 ![image](https://github.com/user-attachments/assets/e3d22a71-8774-41a7-95c2-515cb412b8f8)
 
